@@ -19,6 +19,65 @@ _OUTPUT_COLOURS = ["#2563eb", "#dc2626", "#7c3aed", "#d97706", "#0891b2"]
 _INPUT_COLOURS = ["#16a34a", "#65a30d", "#0d9488", "#ca8a04"]
 
 
+def _annotate_metrics(ax, t, y, ref, metrics, colour):  # pylint: disable=too-many-arguments,too-many-positional-arguments
+    """Add settling band, time and overshoot annotations to a single axis."""
+    band = 0.02 * (abs(ref) if abs(ref) > 1e-12 else 1.0)
+    ax.axhspan(ref - band, ref + band, alpha=0.08, color=colour, label="±2% band")
+
+    st = metrics.settling_time.get(ref)
+    if st is not None:
+        ax.axvline(st, color=colour, lw=1, ls=":", alpha=0.7)
+        ax.annotate(
+            f"  t_s={st:.2f}s",
+            xy=(st, ref),
+            fontsize=8,
+            color=colour,
+            va="center",
+        )
+
+    os_pct = metrics.overshoot.get(ref, 0.0)
+    if os_pct > 0.1:
+        peak_idx = np.argmax(y) if ref >= 0 else np.argmin(y)
+        ax.annotate(
+            f"OS={os_pct:.1f}%",
+            xy=(t[peak_idx], y[peak_idx]),
+            xytext=(0, 8),
+            textcoords="offset points",
+            fontsize=8,
+            color=colour,
+            ha="center",
+        )
+
+
+def _plot_output(ax, resp, i, lbl, metrics):
+    """Draw a single output subplot including reference/metrics."""
+    colour = _OUTPUT_COLOURS[i % len(_OUTPUT_COLOURS)]
+    y = resp.y[i]
+    ax.plot(resp.t, y, color=colour, lw=2, label=lbl)
+    if lbl in resp.tracked:
+        ref = resp.tracked[lbl]
+        ax.axhline(
+            ref, color=colour, lw=1, ls="--", alpha=0.5, label=f"reference ({ref})"
+        )
+        if metrics is not None:
+            _annotate_metrics(ax, resp.t, y, ref, metrics, colour)
+    ax.set_ylabel(lbl)
+    ax.legend(loc="upper right", fontsize=8)
+    ax.grid(True, alpha=0.3)
+    ax.yaxis.set_major_formatter(ticker.FormatStrFormatter("%.3g"))
+
+
+def _plot_input(ax, resp, j, lbl):
+    """Draw a single input subplot."""
+    colour = _INPUT_COLOURS[j % len(_INPUT_COLOURS)]
+    ax.plot(resp.t, resp.u[j], color=colour, lw=2, label=f"u: {lbl}")
+    ax.axhline(0, color="k", lw=0.5, alpha=0.3)
+    ax.set_ylabel(f"u ({lbl})")
+    ax.legend(loc="upper right", fontsize=8)
+    ax.grid(True, alpha=0.3)
+    ax.yaxis.set_major_formatter(ticker.FormatStrFormatter("%.3g"))
+
+
 def plot_response(
     resp: SimulationResult,
     metrics: Metrics | None = None,
@@ -58,65 +117,11 @@ def plot_response(
         title = "Closed-loop response:  " + ",   ".join(parts)
     fig.suptitle(title, fontsize=12)
 
-    # --- Output subplots -----------------------------------------------------
     for i, lbl in enumerate(resp.output_labels):
-        ax = axes[i]
-        colour = _OUTPUT_COLOURS[i % len(_OUTPUT_COLOURS)]
-        y = resp.y[i]
+        _plot_output(axes[i], resp, i, lbl, metrics)
 
-        ax.plot(resp.t, y, color=colour, lw=2, label=lbl)
-
-        if lbl in resp.tracked:
-            ref = resp.tracked[lbl]
-            ax.axhline(
-                ref, color=colour, lw=1, ls="--", alpha=0.5, label=f"reference ({ref})"
-            )
-
-            if metrics is not None:
-                band = 0.02 * (abs(ref) if abs(ref) > 1e-12 else 1.0)
-                ax.axhspan(
-                    ref - band, ref + band, alpha=0.08, color=colour, label="±2% band"
-                )
-
-                st = metrics.settling_time.get(lbl)
-                if st is not None:
-                    ax.axvline(st, color=colour, lw=1, ls=":", alpha=0.7)
-                    ax.annotate(
-                        f"  t_s={st:.2f}s",
-                        xy=(st, ref),
-                        fontsize=8,
-                        color=colour,
-                        va="center",
-                    )
-
-                os_pct = metrics.overshoot.get(lbl, 0.0)
-                if os_pct > 0.1:
-                    peak_idx = np.argmax(y) if ref >= 0 else np.argmin(y)
-                    ax.annotate(
-                        f"OS={os_pct:.1f}%",
-                        xy=(resp.t[peak_idx], y[peak_idx]),
-                        xytext=(0, 8),
-                        textcoords="offset points",
-                        fontsize=8,
-                        color=colour,
-                        ha="center",
-                    )
-
-        ax.set_ylabel(lbl)
-        ax.legend(loc="upper right", fontsize=8)
-        ax.grid(True, alpha=0.3)
-        ax.yaxis.set_major_formatter(ticker.FormatStrFormatter("%.3g"))
-
-    # --- Input subplots ------------------------------------------------------
     for j, lbl in enumerate(resp.input_labels):
-        ax = axes[n_out + j]
-        colour = _INPUT_COLOURS[j % len(_INPUT_COLOURS)]
-        ax.plot(resp.t, resp.u[j], color=colour, lw=2, label=f"u: {lbl}")
-        ax.axhline(0, color="k", lw=0.5, alpha=0.3)
-        ax.set_ylabel(f"u ({lbl})")
-        ax.legend(loc="upper right", fontsize=8)
-        ax.grid(True, alpha=0.3)
-        ax.yaxis.set_major_formatter(ticker.FormatStrFormatter("%.3g"))
+        _plot_input(axes[n_out + j], resp, j, lbl)
 
     axes[-1].set_xlabel("Time  (s)")
     plt.tight_layout()

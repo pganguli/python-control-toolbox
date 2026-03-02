@@ -13,6 +13,7 @@ Typical usage:
     ctrl = build_controller(plant, track={'x': 1.0}, p=10)
     resp = simulate(ctrl, t_end=5.0)
 """
+# pylint: disable=invalid-name,too-many-arguments,too-many-positional-arguments
 
 import math
 

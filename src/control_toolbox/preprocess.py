@@ -10,6 +10,7 @@ Typical usage:
     ctrl = build_controller(plant, ...)
     K, Nbar, sys_cl = ctrl.K, ctrl.Nbar, ctrl.sys_cl
 """
+# pylint: disable=invalid-name
 
 import numpy as np
 from control import StateSpace, c2d, pade, series, ss, tf

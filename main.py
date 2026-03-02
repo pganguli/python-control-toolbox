@@ -16,6 +16,7 @@ from control_toolbox import (
 
 
 def main() -> None:
+    """Demo script: create plant, design controller, simulate and save plot."""
     plant = InvertedPendulum()
     plant = add_delay(plant, T_input=0.5, T_output=0.5)
     plant = discretize(plant, dt=0.01)

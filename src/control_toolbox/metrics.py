@@ -63,6 +63,7 @@ def compute_metrics(resp: SimulationResult, settling_band: float = 0.02) -> Metr
         - If the reference is zero the percentage metrics are computed
           against the absolute deviation instead of a percentage.
     """
+    # pylint: disable=too-many-locals
     overshoot_d = {}
     settling_time_d = {}
     steady_state_error_d = {}
